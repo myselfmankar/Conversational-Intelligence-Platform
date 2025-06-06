@@ -1,0 +1,9 @@
+streamlit
+pandas
+transformers[torch]
+plotly
+# nltk
+# scikit-learn
+# wordcloud
+emoji
+sentencepiece
