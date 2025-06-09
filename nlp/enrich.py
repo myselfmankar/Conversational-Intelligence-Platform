@@ -53,7 +53,7 @@ def enrich_df_with_nlp(df_input: pd.DataFrame) -> pd.DataFrame:
 
     # --- 1. Summarization for long messages ---
     if nlp_applicable_mask.any():
-        with st.spinner("Step 1/3: Summarizing long messages..."):
+        with st.spinner("Step 1: Summarizing long messages..."):
             df.loc[nlp_applicable_mask, 'message_for_nlp'] = df.loc[nlp_applicable_mask, 'message'].apply(
                 lambda txt: summarize_text_if_long(
                     txt, summarizer, MAX_TEXT_LENGTH_FOR_NLP, SUMMARIZATION_MIN_LENGTH, SUMMARIZATION_MAX_LENGTH
@@ -67,7 +67,7 @@ def enrich_df_with_nlp(df_input: pd.DataFrame) -> pd.DataFrame:
         return df
 
     # --- 2. Batch Sentiment Analysis ---
-    with st.spinner("Step 2/3: Performing Sentiment Analysis..."):
+    with st.spinner("Step 2: Performing Sentiment Analysis..."):
         sentiment_results = []
         try:
             for i in range(0, len(texts_to_process), NLP_BATCH_SIZE):
@@ -84,13 +84,11 @@ def enrich_df_with_nlp(df_input: pd.DataFrame) -> pd.DataFrame:
             df.loc[nlp_applicable_mask, 'sentiment_score'] = scores
 
     # --- 3. Batch Named Entity Recognition (NER) ---
-    with st.spinner("Step 3/3: Performing Named Entity Recognition..."):
+    with st.spinner("Step 3: Performing Named Entity Recognition..."):
         all_ner_results = []
-        # CHANGED: Using the summarized text for NER as well for consistency.
         texts_for_ner = df.loc[nlp_applicable_mask, 'message_for_nlp'].fillna("").tolist()
         
         try:
-            # ADDED: Crucial batching loop for NER.
             for i in range(0, len(texts_for_ner), NLP_BATCH_SIZE):
                 batch = texts_for_ner[i:i+NLP_BATCH_SIZE]
                 all_ner_results.extend(ner_recognizer(batch))
@@ -106,7 +104,7 @@ def enrich_df_with_nlp(df_input: pd.DataFrame) -> pd.DataFrame:
             df['entities'] = df['entities'].apply(lambda x: x if isinstance(x, list) else [])
     
     # --- 4. Toxicity Analysis ---
-    with st.spinner("Step 4/4: Scanning for Toxicity..."):
+    with st.spinner("Step 4: Scanning for Toxicity..."):
         # We can use the same texts processed for sentiment/NER
         texts_to_process = df.loc[nlp_applicable_mask, 'message_for_nlp'].fillna("").tolist()
 
