@@ -221,7 +221,7 @@ def get_community_champions_df(df_display: pd.DataFrame, top_n=10):
 
     return pd.DataFrame()
 
-def get_topic_metrics(df_display: pd.DataFrame, topic: str) -> dict or None:
+def get_topic_metrics(df_display: pd.DataFrame, topic: str):
     """
     Analyzes the DataFrame for a specific topic and calculates key metrics.
 
