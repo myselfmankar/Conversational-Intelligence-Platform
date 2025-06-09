@@ -114,8 +114,9 @@ def enrich_df_with_nlp(df_input: pd.DataFrame) -> pd.DataFrame:
                 batch = texts_to_process[i:i+NLP_BATCH_SIZE]
                 all_toxicity_results.extend(toxicity_analyzer(batch))
         except Exception as e:
-            st.error(f"Error during batch toxicity detection: {e}")
-            st.text_area("Toxicity Detection Error Traceback", traceback.format_exc(), height=200)
+            # st.error(f"Error during batch toxicity detection: {e}")
+            # st.text_area("Toxicity Detection Error Traceback", traceback.format_exc(), height=200)
+            pass
 
         # Map results back
         if all_toxicity_results and len(all_toxicity_results) == len(texts_to_process):

@@ -11,7 +11,7 @@ A full-stack data platform designed to unlock actionable insights from unstructu
 
 ---
 
-![Dashboard Preview](assets/dashboard_preview.png)
+![Dashboard Preview](assets/dynamics.png)
 *A preview of the main analysis dashboard.*
 
 ## What Problem Does This Solve?
