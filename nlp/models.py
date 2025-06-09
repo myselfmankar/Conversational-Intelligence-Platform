@@ -3,7 +3,7 @@ from transformers import pipeline
 import torch 
 
 # We use @st.cache_resource so Streamlit doesn't have to reload these big models
-# every single time we change a filter or something. Super handy!
+# every single time we change a filter or something.
 
 @st.cache_resource
 def get_sentiment_pipeline():
@@ -65,9 +65,30 @@ def get_summarization_pipeline():
             model=model_name,
             device=device_to_use
         )
-        
+
         print(f"Summarization model '{model_name}' loaded.")
         return summarization_model_pipeline
     except Exception as e:
         print(f"ERROR loading summarization model '{model_name}': {e}")
+        return None
+
+@st.cache_resource
+def get_toxicity_pipeline():
+    model_name = "unitary/toxic-bert"
+    try:
+        device_to_use = -1
+        if torch.cuda.is_available():
+            device_to_use = 0
+
+        toxicity_pipeline = pipeline(
+            "text-classification", 
+            model="unitary/unbiased-toxic-roberta",
+            tokenizer="unitary/unbiased-toxic-roberta",
+            device=device_to_use
+        )
+        
+        print(f"Toxicity model '{model_name}' loaded.")
+        return toxicity_pipeline
+    except Exception as e:
+        print(f"ERROR loading toxicity model '{model_name}': {e}")
         return None

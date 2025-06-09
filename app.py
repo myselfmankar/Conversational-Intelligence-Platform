@@ -1,13 +1,14 @@
 # WhatsApp Chat NLP Analyzer
 import streamlit as st
 import pandas as pd
-import re 
+import re
 
 # --- Import Custom Modules ---
 from utils.parser import parse_whatsapp_chat
 from utils.file_handler import handle_uploaded_file
-from nlp.enrich import enrich_df_with_nlp # Assumes this file no longer does NER
-from visuals import charts 
+from nlp.enrich import enrich_df_with_nlp
+from visuals import charts
+from ui import tab_brand, tab_overview, tab_sentiment, tab_ner, tab_dynamics, tab_health, tab_download
 
 # --- Main App Logic ---
 st.set_page_config(layout="wide", page_title="WhatsApp Chat NLP Analyzer")
@@ -26,7 +27,7 @@ if 'df_processed' not in st.session_state:
     st.session_state.df_processed = pd.DataFrame()
 if 'analysis_triggered' not in st.session_state:
     st.session_state.analysis_triggered = False
-if 'current_file_name' not in st.session_state: # To reset if new file is uploaded
+if 'current_file_name' not in st.session_state: 
     st.session_state.current_file_name = None
 
 
@@ -104,122 +105,31 @@ if st.session_state.analysis_triggered and not st.session_state.df_processed.emp
     elif df_display.empty and uploaded_file: # This means df_processed was empty or became empty before filters
          st.info("The chat appears to be empty or contained no processable messages after initial processing.")
     elif not df_display.empty:
-        # --- Key Metrics ---
-        col1, col2, col3 = st.columns(3)
-        total_messages = len(df_display)
-        num_participants = df_display[~df_display['is_system']]['author'].nunique()
-        media_messages = len(df_display[df_display['message_type'] == 'media'])
-        
-        col1.metric("Total Messages (filtered)", f"{total_messages}")
-        col2.metric("Active Participants (filtered)", f"{num_participants}")
-        col3.metric("Media Messages (filtered)", f"{media_messages}")
+        tab_titles = [
+            "📊 Overview & Activity",
+            "😊 Sentiment Analysis",
+            "💡 Brand Intelligence",
+            "📝 Content & Topics (NER)",
+            "🌐 Group Dynamics",
+            "🛡️ Community Health",
+            "💾 Download Data"
+        ]
+        tab_overview_ui, tab_sentiment_ui, tab_brand_ui, tab_ner_ui, tab_dynamics_ui, tab_health_ui, tab_download_ui = st.tabs(tab_titles)
 
-        # --- Tabs for different visualizations ---
-        # Adjusted tab titles as NER is disabled for now
-        tab_titles = ["📊 Overview & Activity", "😊 Sentiment Analysis", "📝 Content & Topics (NER)", "🌐 Group Dynamics", "💾 Download Data"]
-        tab_overview, tab_sentiment, tab_ner, tab_dynamics, tab_download = st.tabs(tab_titles)
-
-        with tab_overview:
-            st.subheader("Message Volume")
-            fig_daily = charts.plot_message_activity_timeline(df_display)
-            if fig_daily: st.plotly_chart(fig_daily, use_container_width=True)
-
-            fig_hourly = charts.plot_hourly_activity(df_display)
-            if fig_hourly: st.plotly_chart(fig_hourly, use_container_width=True)
-            
-            st.subheader("Top Contributors")
-            fig_auth_act = charts.plot_author_activity(df_display, top_n=10)
-            if fig_auth_act: st.plotly_chart(fig_auth_act, use_container_width=True)
-
-            st.subheader("Author Activity Ranking")
-            ranked_activity_df = charts.get_ranked_author_activity_df(df_display, top_n=10)
-            if not ranked_activity_df.empty: st.dataframe(ranked_activity_df, use_container_width=True)
-
-
-        with tab_sentiment:
-            st.subheader("Sentiment Analysis")
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                fig_pie = charts.plot_sentiment_distribution_pie(df_display)
-                if fig_pie: st.plotly_chart(fig_pie, use_container_width=True)
-                else: st.info("No sentiment data to plot with current filters.")
-            
-            with col2:
-                fig_author_sent = charts.plot_sentiment_per_author(df_display)
-                if fig_author_sent: st.plotly_chart(fig_author_sent, use_container_width=True)
-                else: st.info("No sentiment data per author to plot with current filters.")
-        
-        with tab_ner:
-            st.subheader("Named Entity Recognition (NER)")
-            st.info("This section identifies the key people (PER), organizations (ORG), and locations (LOC) mentioned in the chat.")
-            
-            # Create columns for a clean layout
-            col1, col2 = st.columns(2)
-            with col1:
-                # Plot for People (PER)
-                fig_people = charts.plot_frequent_named_entities(df_display, top_n=15, entity_types=['PER'])
-                if fig_people:
-                    st.plotly_chart(fig_people, use_container_width=True)
-                else:
-                    st.caption("No 'Person' entities found in the current selection.")
-
-            with col2:
-                # Plot for Orgs and Locations (ORG, LOC)
-                fig_orgs_locs = charts.plot_frequent_named_entities(df_display, top_n=15, entity_types=['ORG', 'LOC'])
-                if fig_orgs_locs:
-                    st.plotly_chart(fig_orgs_locs, use_container_width=True)
-                else:
-                    st.caption("No 'Organization' or 'Location' entities found.")
-
-        with tab_dynamics:
-            st.subheader("Social Network Analysis")
-            st.info("This graph visualizes communication patterns. An arrow from User A to User B means A often sent a message right before B. Larger nodes represent more central users.")
-            
-            fig_network = charts.create_interaction_network_graph(df_display)
-            if fig_network:
-                st.plotly_chart(fig_network, use_container_width=True)
-            else:
-                st.warning("Could not generate a network graph. The chat may be too short or have too few interactions in the current selection.")
-        
-        with tab_download:
-            st.subheader("Explore and Download Your Data")
-            st.info("The tables below are fully interactive. You can sort, filter, and download the data as a CSV using the button in the top-right corner of each table.")
-
-            st.markdown("---")
-            
-            # --- Section 1: Raw Parsed Data ---
-            st.markdown("#### 1. Parsed Chat Data (Before NLP)")
-            st.caption("This is the direct output from the chat parser, containing the essential message information.")
-            
-            # Define the columns for the simple, parsed view
-            parsed_cols = ['datetime', 'author', 'message', 'message_type', 'is_system']
-            # Select only the columns that actually exist in the final DataFrame
-            cols_to_show_parsed = [col for col in df_display.columns if col in parsed_cols]
-            
-            st.dataframe(df_display[cols_to_show_parsed], use_container_width=True)
-
-            st.markdown("---")
-
-            # --- Section 2: Fully Analyzed Data ---
-            st.markdown("#### 2. Fully Analyzed Data (With NLP Insights)")
-            st.caption("This table includes the results of all NLP operations, including sentiment scores and extracted entities.")
-            
-            # Define the columns for the full, analyzed view
-            analyzed_cols = ['datetime', 'author', 'message', 'sentiment_label', 'sentiment_score', 'entities', 'message_for_nlp']
-            # Select only the columns that actually exist
-            cols_to_show_analyzed = [col for col in df_display.columns if col in analyzed_cols]
-
-            # The 'entities' column contains lists of dicts, which can be messy. Let's format it.
-            df_for_display = df_display[cols_to_show_analyzed].copy()
-            if 'entities' in df_for_display.columns:
-                # Convert the list of entity dicts into a clean, readable string
-                df_for_display['entities'] = df_for_display['entities'].apply(
-                    lambda entity_list: ', '.join([entity['word'] for entity in entity_list]) if isinstance(entity_list, list) and entity_list else ''
-                )
-
-            st.dataframe(df_for_display, use_container_width=True)
-    
+        with tab_overview_ui:
+            tab_overview.render_overview_tab(df_display)
+        with tab_sentiment_ui:
+            tab_sentiment.render_sentiment_tab(df_display)
+        with tab_brand_ui:
+            tab_brand.render_brand_intelligence_tab(df_display)
+        with tab_ner_ui:
+            tab_ner.render_ner_tab(df_display)
+        with tab_dynamics_ui:
+            tab_dynamics.render_dynamics_tab(df_display)
+        with tab_health_ui:
+            tab_health.render_health_tab(df_display)
+        with tab_download_ui:
+            tab_download.render_download_tab(df_display)
 elif not st.session_state.analysis_triggered and uploaded_file:
     st.info("☝️ Click the 'Analyze Chat' button in the sidebar to process the uploaded file.")
 

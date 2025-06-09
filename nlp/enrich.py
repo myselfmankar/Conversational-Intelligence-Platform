@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 import traceback
-from .models import get_sentiment_pipeline, get_ner_pipeline, get_summarization_pipeline
+from .models import get_sentiment_pipeline, get_ner_pipeline, get_summarization_pipeline, get_toxicity_pipeline
 
 # --- Configuration for NLP Tasks ---
 MAX_TEXT_LENGTH_FOR_NLP = 500  # Words; messages longer than this will be summarized for NLP
@@ -38,6 +38,7 @@ def enrich_df_with_nlp(df_input: pd.DataFrame) -> pd.DataFrame:
     summarizer = get_summarization_pipeline()
     sentiment_analyzer = get_sentiment_pipeline()
     ner_recognizer = get_ner_pipeline()
+    toxicity_analyzer = get_toxicity_pipeline()  
 
     if any(model is None for model in [summarizer, sentiment_analyzer, ner_recognizer]):
         st.error("One or more NLP models failed to load. Aborting NLP enrichment.")
@@ -103,5 +104,29 @@ def enrich_df_with_nlp(df_input: pd.DataFrame) -> pd.DataFrame:
             entities_series = pd.Series(all_ner_results, index=df.index[nlp_applicable_mask])
             df['entities'] = entities_series
             df['entities'] = df['entities'].apply(lambda x: x if isinstance(x, list) else [])
+    
+    # --- 4. Toxicity Analysis ---
+    with st.spinner("Step 4/4: Scanning for Toxicity..."):
+        # We can use the same texts processed for sentiment/NER
+        texts_to_process = df.loc[nlp_applicable_mask, 'message_for_nlp'].fillna("").tolist()
 
+        all_toxicity_results = []
+        try:
+            for i in range(0, len(texts_to_process), NLP_BATCH_SIZE):
+                batch = texts_to_process[i:i+NLP_BATCH_SIZE]
+                all_toxicity_results.extend(toxicity_analyzer(batch))
+        except Exception as e:
+            st.error(f"Error during batch toxicity detection: {e}")
+            st.text_area("Toxicity Detection Error Traceback", traceback.format_exc(), height=200)
+
+        # Map results back
+        if all_toxicity_results and len(all_toxicity_results) == len(texts_to_process):
+            # The model outputs a list of labels. We are interested in the 'toxic' one.
+            # A message can have multiple labels (e.g., toxic, insult).
+            labels = ['toxic' if res['label'] == 'toxic' else 'non-toxic' for res in all_toxicity_results]
+            scores = [res['score'] if res['label'] == 'toxic' else 1 - res['score'] for res in all_toxicity_results]
+            
+            df.loc[nlp_applicable_mask, 'toxicity_label'] = labels
+            df.loc[nlp_applicable_mask, 'toxicity_score'] = scores
+    
     return df

@@ -124,7 +124,6 @@ def plot_frequent_named_entities(df_display: pd.DataFrame, top_n=20, entity_type
     fig.update_layout(yaxis={'categoryorder': 'total ascending'})
     return fig
 
-# --- NEW: Group Dynamics & Network Graph ---
 
 def create_interaction_network_graph(df_display: pd.DataFrame):
     """Creates an interactive network graph of user interactions."""
@@ -178,3 +177,134 @@ def create_interaction_network_graph(df_display: pd.DataFrame):
                     xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
                     yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)))
     return fig
+
+def get_community_champions_df(df_display: pd.DataFrame, top_n=10):
+    """
+    Calculates a "Contribution Score" for each author and returns a ranked DataFrame.
+    The score is based on message activity and positive sentiment ratio.
+    """
+    if df_display.empty or 'author' not in df_display.columns:
+        return pd.DataFrame()
+
+    user_df = df_display[~df_display['is_system']].copy()
+    
+    if user_df.empty:
+        return pd.DataFrame()
+
+    # 1. Calculate total messages per author
+    author_activity = user_df['author'].value_counts().reset_index()
+    author_activity.columns = ['Author', 'Message Count']
+
+    # 2. Calculate positive sentiment ratio per author
+    sentiment_ratios = user_df[user_df['sentiment_label'] == 'POSITIVE'].groupby('author').size() / user_df.groupby('author').size()
+    sentiment_ratios = sentiment_ratios.fillna(0).reset_index(name='Positive Ratio')
+    sentiment_ratios.columns = ['Author', 'Positive Ratio (%)']
+    sentiment_ratios['Positive Ratio (%)'] = (sentiment_ratios['Positive Ratio (%)'] * 100).round(1)
+
+    # 3. Merge the stats
+    champions_df = pd.merge(author_activity, sentiment_ratios, on='Author', how='left').fillna(0)
+
+    # 4. Normalize metrics and calculate a final score
+    if not champions_df.empty:
+        # Normalize between 0 and 1
+        champions_df['Normalized Activity'] = champions_df['Message Count'] / champions_df['Message Count'].max()
+        champions_df['Normalized Positivity'] = champions_df['Positive Ratio (%)'] / 100 # Already a 0-100 scale
+
+        # Calculate a weighted score
+        champions_df['Contribution Score'] = (0.4 * champions_df['Normalized Activity'] + 0.6 * champions_df['Normalized Positivity']) * 100
+        champions_df = champions_df.sort_values(by='Contribution Score', ascending=False).head(top_n)
+
+        # Format for display
+        champions_df['Contribution Score'] = champions_df['Contribution Score'].round(1)
+        champions_df.insert(0, 'Rank', range(1, len(champions_df) + 1))
+        
+        return champions_df[['Rank', 'Author', 'Message Count', 'Positive Ratio (%)', 'Contribution Score']].set_index('Rank')
+
+    return pd.DataFrame()
+
+def get_topic_metrics(df_display: pd.DataFrame, topic: str) -> dict or None:
+    """
+    Analyzes the DataFrame for a specific topic and calculates key metrics.
+
+    This function filters the DataFrame for messages containing the given topic
+    and computes statistics like mention count, sentiment breakdown, and average
+    toxicity.
+
+    Args:
+        df_display (pd.DataFrame): The DataFrame to analyze (can be pre-filtered).
+        topic (str): The keyword/topic to search for (case-insensitive).
+
+    Returns:
+        dict: A dictionary containing the calculated metrics.
+              Example: 
+              {
+                  'mentions': 50, 
+                  'authors': 12, 
+                  'positive_ratio': 65.5, 
+                  'negative_ratio': 10.2, 
+                  'avg_toxicity': 0.15
+              }
+        None: If the topic is not found or the input is invalid.
+    """
+    # --- Input Validation ---
+    if df_display.empty or not isinstance(topic, str) or not topic.strip():
+        return None
+
+    # --- Filtering for the Topic ---
+    # Use .str.contains() for a case-insensitive search.
+    # na=False ensures that any potential NaN values in 'message' don't cause an error.
+    topic_df = df_display[df_display['message'].str.contains(topic, case=False, na=False)]
+
+    # If no messages contain the topic, there's nothing to analyze.
+    if topic_df.empty:
+        return None
+
+    # --- Metric Calculation ---
+    metrics = {
+        'mentions': topic_df.shape[0],
+        'authors': topic_df['author'].nunique(),
+    }
+
+    # --- Conditional Calculation for NLP-derived columns ---
+    # These checks make the function robust, even if NLP steps failed.
+
+    # Calculate sentiment breakdown if the column exists
+    if 'sentiment_label' in topic_df.columns:
+        sentiment_counts = topic_df['sentiment_label'].value_counts(normalize=True)
+        # Use .get(key, 0.0) as a safe way to access counts that might not exist
+        metrics['positive_ratio'] = sentiment_counts.get('POSITIVE', 0.0) * 100
+        metrics['negative_ratio'] = sentiment_counts.get('NEGATIVE', 0.0) * 100
+        metrics['neutral_ratio'] = sentiment_counts.get('NEUTRAL', 0.0) * 100
+
+    # Calculate average toxicity if the column exists
+    if 'toxicity_score' in topic_df.columns:
+        # .mean() will safely ignore NaN values if any exist
+        metrics['avg_toxicity'] = topic_df['toxicity_score'].mean()
+
+    return metrics
+
+def get_suggested_topics(df_display: pd.DataFrame, top_n=10):
+    """
+    Scans NER results to suggest potential brand/product topics to track.
+    Prioritizes 'ORG' and 'MISC' entities.
+    """
+    if 'entities' not in df_display.columns:
+        return []
+
+    suggestions = []
+    entity_types = ['ORG', 'MISC']
+
+    for entity_list in df_display['entities'].dropna():
+        if isinstance(entity_list, list):
+            for entity in entity_list:
+                if isinstance(entity, dict) and entity.get('entity_group') in entity_types:
+                    word = entity.get('word', '').replace('##', '').strip()
+                    # Exclude very short, likely unhelpful words
+                    if len(word) > 2:
+                        suggestions.append(word)
+
+    if not suggestions:
+        return []
+
+    most_common_suggestions = [item for item, count in Counter(suggestions).most_common(top_n)]
+    return most_common_suggestions
