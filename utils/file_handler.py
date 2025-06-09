@@ -1,4 +1,3 @@
-# whatsapp-chat-analyzer/utils/file_handler.py
 import streamlit as st
 import zipfile 
 import io      
@@ -23,7 +22,6 @@ def handle_uploaded_file(uploaded_file):
     elif uploaded_file.name.endswith(".zip"):
         try:
             with zipfile.ZipFile(io.BytesIO(uploaded_file.getvalue()), 'r') as zip_ref:
-                # Assuming the first .txt file in the zip is the chat
                 txt_files = [f for f in zip_ref.namelist() if f.lower().endswith('.txt')]
                 if not txt_files:
                     st.error("No .txt file found in the uploaded .zip archive.")
