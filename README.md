@@ -5,9 +5,9 @@
 
 A full-stack data platform designed to unlock actionable insights from unstructured WhatsApp chat data. Move beyond simple message counts and discover the sentiment, topics, and social dynamics driving your conversations.
 
-### ✨ [**View the Live Demo Here!**](https://YOUR-STREAMLIT-APP-URL.streamlit.app/) ✨
+### ✨ **View the Live Demo Here!** ✨
+[conversational-intelligence-platform](https://conversational-intelligence-platform.streamlit.app/) 
 
-*(Replace the link above with your deployed Streamlit Cloud URL)*
 
 ---
 
