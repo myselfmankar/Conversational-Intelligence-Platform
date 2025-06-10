@@ -50,6 +50,9 @@ def render_dashboard(df_processed: pd.DataFrame):
     tab_titles = ["📊 Overview", "😊 Sentiment", "💡 Brand Intelligence", "📝 NER", "🌐 Dynamics", "🛡️ Health", "💾 Download"]
     tabs = st.tabs(tab_titles)
 
+    if 'active_tab_index' not in st.session_state:
+        st.session_state.active_tab_index = 0
+    
     with tabs[0]:
         render_overview_tab(df_display)
     with tabs[1]:
