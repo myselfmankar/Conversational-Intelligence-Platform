@@ -29,7 +29,8 @@ def get_sentiment_pipeline():
 
 @st.cache_resource 
 def get_ner_pipeline():
-    model_name = "dslim/bert-base-NER"
+    # model_name = "dslim/bert-base-NER"
+    model_name = "xlm-roberta-large-finetuned-conll03-english" # Using a  MULTILINGUAL NER model
     try:
         device_to_use = -1 
         if torch.cuda.is_available():
@@ -38,7 +39,7 @@ def get_ner_pipeline():
         ner_model_pipeline = pipeline(
             "ner",                 
             model=model_name,
-            grouped_entities=True, # like "New" and "York" into "New York".
+            grouped_entities=True, 
             device=device_to_use
         )
         
