@@ -5,10 +5,12 @@ import torch
 # We use @st.cache_resource so Streamlit doesn't have to reload these big models
 # every single time we change a filter or something.
 
+HF_TOKEN = st.secrets.get("HUGGING_FACE_TOKEN")
+
 @st.cache_resource
 def get_sentiment_pipeline():
     model_name = "cardiffnlp/twitter-roberta-base-sentiment-latest"
-
+    
     try:
         device_to_use = -1
         if torch.cuda.is_available():
@@ -18,7 +20,8 @@ def get_sentiment_pipeline():
             model=model_name,      
             device=device_to_use,
             max_length=512,
-            truncation=True        
+            truncation=True,
+            token=HF_TOKEN     
         )
         
         return sentiment_model_pipeline
@@ -40,7 +43,8 @@ def get_ner_pipeline():
             "ner",                 
             model=model_name,
             grouped_entities=True, 
-            device=device_to_use
+            device=device_to_use,
+            token=HF_TOKEN
         )
         
         return ner_model_pipeline
@@ -59,7 +63,8 @@ def get_summarization_pipeline():
         summarization_model_pipeline = pipeline(
             "summarization",       
             model=model_name,
-            device=device_to_use
+            device=device_to_use,
+            token=HF_TOKEN
         )
 
         return summarization_model_pipeline
@@ -79,7 +84,8 @@ def get_toxicity_pipeline():
             model="unitary/unbiased-toxic-roberta",
             tokenizer="unitary/unbiased-toxic-roberta",
             device=device_to_use,
-            max_length=512
+            max_length=512,
+            token=HF_TOKEN
         )
         
         return toxicity_pipeline
