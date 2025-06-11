@@ -24,7 +24,7 @@ def get_sentiment_pipeline():
         return sentiment_model_pipeline
         
     except Exception as e:
-        st.error(f"Could not load sentiment model '{model_name}'. Error: {e}")
+        print(f"Could not load sentiment model '{model_name}'. Error: {e}")
         return None 
 
 @st.cache_resource 
