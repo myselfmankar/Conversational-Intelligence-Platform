@@ -1,9 +1,14 @@
-streamlit
+streamlit==1.33.0
 pandas
-transformers[torch]
-plotly
-# nltk
-# scikit-learn
-# wordcloud
+numpy
+networkx
 emoji
-sentencepiece
+
+plotly==5.19.0
+
+transformers==4.38.2
+sentencepiece==0.2.0
+tensorflow-cpu==2.16.1
+torch==2.2.1 --index-url https://download.pytorch.org/whl/cpu
+torchvision==0.17.1 --index-url https://download.pytorch.org/whl/cpu
+protobuf==3.20.3
