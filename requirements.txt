@@ -1,6 +1,7 @@
 streamlit
 pandas
-transformers[torch]
+torch
+transformers
 plotly
 networkx
 emoji
