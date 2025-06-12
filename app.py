@@ -41,8 +41,10 @@ def run_analysis(uploaded_file):
             st.session_state.analysis_triggered = False
             return
 
-        # Step 2: NLP Enrichment
-        st.session_state.df_processed = enrich_df_with_nlp(parsed_df)
+        # --- THIS IS THE CRITICAL CHANGE ---
+        with st.spinner("Analyzing messages with NLP models... This may take several minutes."):
+            st.session_state.df_processed = enrich_df_with_nlp(parsed_df)
+        # --- END OF CHANGE ---
 
         if st.session_state.df_processed.empty:
             st.warning("Analysis complete, but no processable text messages were found.")
@@ -50,8 +52,11 @@ def run_analysis(uploaded_file):
             st.success("Analysis complete! The dashboard is ready.")
 
     except Exception as e:
+        import traceback
         st.error(f"An error occurred during analysis: {e}")
+        print(traceback.format_exc()) # Show the full traceback for better debugging
         st.session_state.analysis_triggered = False
+
 
 # --- Main Application UI ---
 st.title("💡 Conversational Intelligence Platform")
